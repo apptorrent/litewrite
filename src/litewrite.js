@@ -17,7 +17,7 @@ define(function(require) {
 
     initialize: function() {
 
-      _.bindAll(this, 'loadDoc', 'setDoc', 'open', 'handlePrevious', 'updateDocs', 'updateState', 'updateUri');
+      _.bindAll(this, 'loadDoc', 'setDoc', 'open', 'throttledOpen', 'handlePrevious', 'updateDocs', 'updateState', 'updateUri');
 
       this.state = new State();
       this.doc = new Doc();
@@ -33,7 +33,9 @@ define(function(require) {
         .on('change', this.updateDocs);
 
 
-      $.when( this.state.fetch(), this.docs.fetch() ).then( this.loadDoc );
+      this.state.fetch().always(_.bind(function() {
+        this.docs.ready.then(this.loadDoc);
+      }, this));
 
       new AppView({ app: this, collection: this.docs });
 
@@ -58,9 +60,13 @@ define(function(require) {
     },
 
     // open a document. either pass a Doc or an id
-    open: _.throttle(function(doc) {
+    open: function(doc) {
       if ( !_.isObject(doc) ) doc = this.docs.get(doc) || this.docs.first();
       this.doc.set( doc.toJSON() );
+    },
+
+    throttledOpen: _.throttle(function(doc) {
+      this.open(doc);
     }, 400, { leading: true, trailing: true }),
 
     // remove empty documents
